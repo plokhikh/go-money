@@ -41,27 +41,3 @@ func (c *calculator) negative(a *Amount) *Amount {
 
 	return &Amount{a.val}
 }
-
-func (c *calculator) round(a *Amount) *Amount {
-
-	if a.val == 0 {
-		return &Amount{0}
-	}
-
-	absam := c.absolute(a)
-	m := absam.val % 100
-
-	if m > 50 {
-		absam.val += 100
-	}
-
-	absam.val = (absam.val / 100) * 100
-
-	if a.val < 0 {
-		a.val = -absam.val
-	} else {
-		a.val = absam.val
-	}
-
-	return &Amount{a.val}
-}

@@ -2,6 +2,7 @@ package money
 
 import (
 	"errors"
+	"math"
 )
 
 // Amount is a datastructure that stores the amount being used for calculations
@@ -17,11 +18,28 @@ type Money struct {
 }
 
 // New creates and returns new instance of Money
-func New(amount int64, code string) *Money {
-	return &Money{
-		amount:   &Amount{val: amount},
+func New(amount float64, code string) *Money {
+	m := Money{
 		currency: newCurrency(code).get(),
 	}
+	//convert float amount to integer according minimal currency digits
+	m.amount = &Amount{
+		val: m.floatToInt(amount, m.currency.Fraction),
+	}
+
+	return &m
+}
+
+//internally operating with int, externally allow accept float
+func (m *Money) floatToInt(f float64, precision int) int64 {
+	f = f * math.Pow10(precision)
+	f = math.Round(f)
+
+	return int64(f)
+}
+
+func (m *Money) intToFloat(i int64, precision int) float64 {
+	return float64(i) / math.Pow10(precision)
 }
 
 // Currency returns the currency used by Money
@@ -29,9 +47,9 @@ func (m *Money) Currency() *Currency {
 	return m.currency
 }
 
-// Amount returns a copy of the internal monetary value as an int64
-func (m *Money) Amount() int64 {
-	return m.amount.val
+// Amount returns a copy of the internal monetary value as an float64
+func (m *Money) Amount() float64 {
+	return m.intToFloat(m.amount.val, m.currency.Fraction)
 }
 
 // SameCurrency check if given Money is equals by currency
@@ -41,7 +59,7 @@ func (m *Money) SameCurrency(om *Money) bool {
 
 func (m *Money) assertSameCurrency(om *Money) error {
 	if !m.SameCurrency(om) {
-		return errors.New("Currencies don't match")
+		return errors.New("currencies don't match")
 	}
 
 	return nil
@@ -156,17 +174,12 @@ func (m *Money) Divide(div int64) *Money {
 	return &Money{amount: mutate.calc.divide(m.amount, div), currency: m.currency}
 }
 
-// Round returns new Money struct with value rounded to nearest zero
-func (m *Money) Round() *Money {
-	return &Money{amount: mutate.calc.round(m.amount), currency: m.currency}
-}
-
 // Split returns slice of Money structs with split Self value in given number.
 // After division leftover pennies will be distributed round-robin amongst the parties.
 // This means that parties listed first will likely receive more pennies than ones that are listed later
 func (m *Money) Split(n int) ([]*Money, error) {
 	if n <= 0 {
-		return nil, errors.New("Split must be higher than zero")
+		return nil, errors.New("split must be higher than zero")
 	}
 
 	a := mutate.calc.divide(m.amount, int64(n))

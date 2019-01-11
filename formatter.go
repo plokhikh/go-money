@@ -1,7 +1,8 @@
 package money
 
 import (
-	"strconv"
+	"fmt"
+	"math"
 	"strings"
 )
 
@@ -27,21 +28,32 @@ func NewFormatter(fraction int, decimal, thousand, grapheme, template string) *F
 
 // Format returns string of formatted integer using given currency template
 func (f *Formatter) Format(amount int64) string {
-	// Work with absolute amount value
-	sa := strconv.FormatInt(f.abs(amount), 10)
+	var mant string
 
-	if len(sa) <= f.Fraction {
-		sa = strings.Repeat("0", f.Fraction-len(sa)+1) + sa
+	// Work with absolute amount value
+	template := fmt.Sprintf("%%.%df", f.Fraction)
+	sas := strings.Split(fmt.Sprintf(template, float64(amount)/math.Pow10(f.Fraction)), ".")
+	exp := sas[0]
+
+	if len(sas) > 1 {
+		mant = sas[1]
+	} else {
+		mant = ""
+	}
+
+	if exp[0:1] == "-" {
+		exp = exp[1:]
 	}
 
 	if f.Thousand != "" {
-		for i := len(sa) - f.Fraction - 3; i > 0; i -= 3 {
-			sa = sa[:i] + f.Thousand + sa[i:]
+		for i := len(exp) - 3; i > 0; i -= 3 {
+			exp = exp[:i] + f.Thousand + exp[i:]
 		}
 	}
 
-	if f.Fraction > 0 {
-		sa = sa[:len(sa)-f.Fraction] + f.Decimal + sa[len(sa)-f.Fraction:]
+	sa := exp
+	if len(mant) > 0 {
+		sa += "." + mant
 	}
 	sa = strings.Replace(f.Template, "1", sa, 1)
 	sa = strings.Replace(sa, "$", f.Grapheme, 1)
